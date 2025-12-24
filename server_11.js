@@ -179,57 +179,47 @@ function preferenceScore(profile, restaurant) {
   return score / maxScore;
 }
 
+//
+async function fetchOSMRestaurants() {
+  const query = `
+    [out:json][timeout:25];
+    (
+      node["amenity"="restaurant"](25.01,121.52,25.04,121.56);
+      node["amenity"="fast_food"](25.01,121.52,25.04,121.56);
+      node["amenity"="cafe"](25.01,121.52,25.04,121.56);
+    );
+    out tags center;
+  `;
+
+  const response = await fetch(
+    "https://overpass-api.de/api/interpreter",
+    {
+      method: "POST",
+      body: query,
+      headers: { "Content-Type": "text/plain" }
+    }
+  );
+
+  const data = await response.json();
+
+  return data.elements.map(el => ({
+    osm_id: el.id,
+    name: el.tags?.name || "未命名店家",
+    amenity: el.tags?.amenity,
+    cuisine: el.tags?.cuisine || "",
+    lat: el.lat,
+    lon: el.lon,
+    tags: el.tags || {}
+  }));
+}
 
 /* =========================================================
  * OSM API 把OSM店家變乾淨json
  * ========================================================= */
 app.get("/osm/restaurants", async (req, res) => {
-  try {
-    const query = `
-      [out:json][timeout:25];
-      (
-        node["amenity"="restaurant"](25.01,121.52,25.04,121.56);
-        node["amenity"="fast_food"](25.01,121.52,25.04,121.56);
-        node["amenity"="cafe"](25.01,121.52,25.04,121.56);
-      );
-      out tags center;
-    `;
-
-    const response = await fetch(
-      "https://overpass-api.de/api/interpreter",
-      {
-        method: "POST",
-        body: query,
-        headers: {
-          "Content-Type": "text/plain"
-        }
-      }
-    );
-    // ✅ 先看是不是 JSON
-    const contentType = response.headers.get("content-type") || "";
-
-    if (!contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error("❌ OSM returned non-JSON:", text.slice(0, 200));
-      throw new Error("OSM returned non-JSON response");
-    }
-
-    const data = await response.json();
-
-    const restaurants = data.elements.map(el => ({
-      osm_id: el.id,
-      name: el.tags?.name || "未命名店家",
-      amenity: el.tags?.amenity,
-      cuisine: el.tags?.cuisine || "",
-      lat: el.lat,
-      lon: el.lon,
-      tags: el.tags || {}
-    }));
-
-    res.json({
-      count: restaurants.length,
-      restaurants
-    });
+ try {
+    const restaurants = await fetchOSMRestaurants();
+    res.json({ count: restaurants.length, restaurants });
   } catch (err) {
     console.error("❌ OSM fetch failed:", err);
     res.status(500).json({ error: "OSM fetch failed" });
@@ -265,28 +255,8 @@ app.get("/recommend/outside/osm", async (req, res) => {
         ? JSON.parse(rawProfile)
         : rawProfile;
           
-
-    // 2️⃣ 撈 OSM
-    const osmRes = await fetch("http://localhost:3000/osm/restaurants");
-    if (!osmRes.ok) {
-      console.error("❌ OSM API HTTP error:", osmRes.status);
-      return res.status(500).json({ error: "OSM service unavailable" });
-    }
-
-    let osmData;
-    try {
-      osmData = await osmRes.json();
-    } catch (e) {
-      console.error("❌ OSM JSON parse failed");
-      return res.status(500).json({ error: "OSM response invalid" });
-    }
-
-    if (!osmData || !Array.isArray(osmData.restaurants)) {
-      console.error("❌ OSM data invalid:", osmData);
-      return res.status(500).json({ error: "OSM data invalid" });
-    }
-
-    let restaurants = osmData.restaurants;
+    let restaurants = await fetchOSMRestaurants();
+  
 
     // 3️⃣ 根據問卷做「最基本篩選（MVP）」
     if (profile.cuisines?.length) {

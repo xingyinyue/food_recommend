@@ -1,15 +1,24 @@
 const mysql = require("mysql2/promise");
-/*
-const pool = mysql.createPool({
-host: "localhost",
-user: "root",
-password: "Ypl@40575027",
-database: "ai_meal",
-waitForConnections: true,
-connectionLimit: 10,
-queueLimit: 0
-});
-*/
 
-const pool = mysql.createPool(process.env.MYSQL_URL);
+// Railway 會提供 MYSQL_URL
+// 本機則用 DB_* 這組
+let pool;
+
+if (process.env.MYSQL_URL) {
+  // ✅ Railway 環境
+  console.log("🌍 Using MYSQL_URL (Railway)");
+  pool = mysql.createPool(process.env.MYSQL_URL);
+} else {
+  // ✅ 本機環境
+  console.log("💻 Using DB_HOST / DB_USER (Local)");
+  pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+  });
+}
+
 module.exports = pool;
