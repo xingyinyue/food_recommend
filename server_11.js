@@ -372,6 +372,11 @@ app.get("/_test", (req, res) => {
   res.sendFile(path.join(__dirname, "index_17.html"));
 });
 
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "meal_recommendation_3.html"));
+});
+
+
 /* =========================================================
  * 啟動 Server
  * ========================================================= */
