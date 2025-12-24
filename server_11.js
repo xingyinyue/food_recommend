@@ -30,18 +30,6 @@ app.use(express.static(path.join(__dirname, "public")));
 const PORT = process.env.PORT || 3000;
 
 /* =========================================================
- * 測試 MySQL 連線
- * ========================================================= */
-(async () => {
-  try {
-    await db.query("SELECT 1");
-    console.log("✅ MySQL connected (server)");
-  } catch (err) {
-    console.error("❌ MySQL connection failed:", err);
-  }
-})();
-
-/* =========================================================
  * 接收問卷 → 存入 MySQL
  * ========================================================= */
 app.post("/submit-survey", async (req, res) => {
