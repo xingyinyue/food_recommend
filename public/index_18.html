@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+====================================================================
+index_17.html — 每日餐點組合（全頁吸附呈現版）
+--------------------------------------------------------------------
+*將個人化問卷串上食物推薦系統
+meal_recommendation_3.html + index_17.html + server_10.js v
+
+【資料來源】
+- 餐點碎片：food_fragments.json
+- 推薦邏輯：server_10.js
+- API：POST /recommend
+
+- 網頁：http://localhost:3000/meal_recommendation_3.html
+http://localhost:3000/recommend/outside
+====================================================================
+-->
+
+<title>溫馨美味的一餐</title>
+
+<style>
+/* ======================================================
+溫馨配色變數（整站情緒基準）
+====================================================== */
+:root {
+--bg-warm: #f6f3ee;
+--bg-soft: #fbfaf7;
+--card-bg: #ffffff;
+
+--green-main: #3a7f68;
+--green-soft: #6b9c8b;
+
+--text-main: #2f2f2f;
+--text-muted: #7a7a7a;
+
+--tag-bg: #e8f2ee;
+}
+
+/* ======================================================
+基礎設定
+====================================================== */
+body {
+margin: 0;
+font-family: system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei";
+background: var(--bg-warm);
+color: var(--text-main);
+}
+
+.wrap {
+max-width: 720px;
+margin: 0 auto;
+}
+
+/* ======================================================
+上方溫馨 Header
+====================================================== */
+.header {
+height: 160px;
+padding: 20px 16px;
+background: linear-gradient(180deg, #f4efe7, #f9f7f3);
+}
+
+h1 {
+margin: 0 0 10px;
+color: var(--green-main);
+font-size: 22px;
+}
+
+.muted {
+color: var(--green-soft);
+font-size: 14px;
+line-height: 1.5;
+}
+
+
+/* ======================================================
+Loading 動畫
+====================================================== */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  background: #fbfaf7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.loading-card {
+  text-align: center;
+  padding: 24px 28px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+  color: #3a7f68;
+  font-size: 15px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #e8f2ee;
+  border-top-color: #3a7f68;
+  border-radius: 50%;
+  margin: 0 auto 14px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ======================================================
+滑動區（全頁吸附）
+====================================================== */
+#results {
+height: calc(100vh - 160px);
+overflow-y: scroll;
+scroll-snap-type: y mandatory;
+background: var(--bg-soft);
+}
+
+/* ======================================================
+推薦卡片（一組＝一頁）
+====================================================== */
+.combo-card {
+min-height: calc(100vh - 160px);
+scroll-snap-align: start;
+
+display: flex;
+flex-direction: column;
+padding: 28px 22px;
+background: var(--card-bg);
+border-radius: 18px;
+margin: 16px;
+box-shadow: 0 10px 24px rgba(0,0,0,0.04);
+}
+
+.combo-body {
+flex: 1;
+}
+
+/* ======================================================
+標題文字
+====================================================== */
+.combo-title {
+font-size: 20px;
+font-weight: 700;
+margin: 0;
+color: var(--green-main);
+}
+
+.combo-subtitle {
+margin: 6px 0 14px;
+color: var(--green-soft);
+font-size: 14px;
+}
+
+/* ======================================================
+餐點清單（文字先於圖片，建立安全感）
+====================================================== */
+ul {
+padding-left: 18px;
+margin: 0 0 10px;
+}
+
+li {
+margin-bottom: 6px;
+color: var(--text-main);
+}
+
+/* ======================================================
+餐點圖片（輔助想像，不主導）
+====================================================== */
+.food-images {
+display: flex;
+gap: 10px;
+margin: 14px 0 18px;
+}
+
+.food-images img {
+width: 48%;
+height: 110px;
+border-radius: 14px;
+object-fit: cover;
+background: #eee;
+}
+
+/* ======================================================
+營養標籤（低壓力呈現）
+====================================================== */
+.tags span {
+display: inline-block;
+background: var(--tag-bg);
+color: var(--green-main);
+padding: 5px 10px;
+border-radius: 999px;
+margin-right: 6px;
+font-size: 12px;
+}
+
+/* ======================================================
+底部資訊
+====================================================== */
+.combo-meta {
+font-size: 13px;
+color: var(--text-muted);
+margin-top: 14px;
+}
+
+.end-note {
+margin-top: auto;
+text-align: center;
+color: var(--text-muted);
+font-size: 14px;
+padding-top: 24px;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- 上方溫馨區 -->
+  <div class="header">
+    <h1>溫馨美味的一餐</h1>
+    <p class="muted">
+      今天就這樣吃吧🌿
+    </p>
+  </div>
+
+  <!-- ✅ Loading 畫面（就放這裡） -->
+  <div id="loading" class="loading-screen">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <p>正在為你挑選附近適合的餐廳 🍱</p>
+    </div>
+  </div>
+
+  <!-- 推薦結果 -->
+  <div id="results"></div>
+
+</div>
+
+<script>
+
+// 取得用戶當前位置
+function getUserLocation() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject("Geolocation not supported");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude
+        });
+      },
+      (err) => {
+        reject(err.message);
+      },
+      {
+        enableHighAccuracy: false, // 外食推薦不需要 GPS 級
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  });
+}
+
+console.log("🚀 loadRecommendations start");
+async function loadRecommendations() {
+  const loadingEl = document.getElementById("loading");
+  const resultsEl = document.getElementById("results");
+
+  loadingEl.style.display = "block";
+  await new Promise(r => requestAnimationFrame(r));
+
+
+  try {
+    let location;
+    try{
+      location = await getUserLocation();
+      console.log("📍 使用者定位：", location);
+    }catch (err) {
+    console.warn("⚠️ 定位失敗，使用預設位置", err);
+      location = {
+        lat: 25.0173,
+        lon: 121.5397
+      };
+    }
+
+    const res = await fetch(
+      `/recommend/outside/osm?lat=${location.lat}&lon=${location.lon}`
+    );
+
+    const data = await res.json();
+
+    // ✅ 成功才關 loading
+    loadingEl.style.display = "none";
+    resultsEl.innerHTML = "";
+
+    if (!data || !Array.isArray(data.restaurants)) {
+      console.warn("⚠️ 推薦資料尚未準備好", data);
+      loadingEl.querySelector("p").textContent =
+        "正在為你整理推薦，請稍候一下 🍃";
+      return;
+    }
+
+    data.restaurants.forEach((r, index) => {
+      console.log("🧪 restaurant raw data:", r);
+      const card = document.createElement("div");
+      card.className = "combo-card";
+
+      const reasons = [];
+      if (r.scoreDetail?.distanceScore > 0.7) {
+        reasons.push("距離很近");
+      }
+
+      if (r.scoreDetail?.preferenceScore > 0.6) {
+        reasons.push("符合你的飲食偏好");
+      }
+
+      if (reasons.length === 0) {
+        reasons.push("整體條件均衡");
+      }
+
+      card.innerHTML = `
+        <div class="combo-body">
+          <h3 class="combo-title">${r.name}</h3>
+
+          <p class="combo-subtitle">
+            推薦分數：
+            <strong>${(r.score * 100).toFixed(0)}%</strong>
+          </p>
+
+          <ul>
+            <li>距離你約 ${r.distanceKm.toFixed(2)} 公里</li>
+            <li>推薦原因：${reasons.join("、")}</li>
+          </ul>
+
+          <div class="tags">
+            <span>${r.amenity}</span>
+            <span>外食</span>
+            <span>推薦</span>
+          </div>
+        </div>
+      `;
+
+      resultsEl.appendChild(card);
+    });
+
+  }catch (err) {
+    console.error("❌ 推薦失敗:", err);
+    // ❗ 不顯示 alert，只留 loading（體驗會好很多）
+    loadingEl.querySelector("p").textContent =
+      "正在為你整理推薦，請稍候一下 🍃";
+  }
+}
+
+// ✅ 頁面一載入就跑
+loadRecommendations();
+</script>
+
+</body>
+</html>

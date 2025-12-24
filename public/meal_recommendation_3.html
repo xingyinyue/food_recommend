@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>健康餐推薦問卷</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+====================================================================
+meal_recommendation_3.html — 個人化問卷
+--------------------------------------------------------------------
+*將個人化問卷串上食物推薦系統的資料庫
+*將個人化問卷串上食物推薦系統
+
+meal_recommendation_3.html + index_18.html + server_11.js
+
+【資料來源】
+- 餐點碎片：food_fragments.json
+- 推薦邏輯：server_11.js
+- API：POST /recommend
+- 網頁：http://localhost:3000/index_18.html
+====================================================================
+-->
+  <html lang="zh-Hant">
+<head>
+
+  <style>
+    :root {
+      --primary: #4caf93;
+      --primary-light: #e3f5ef;
+      --bg: #f7f8fb;
+      --text-main: #222;
+      --text-sub: #666;
+      --card-bg: #ffffff;
+      --border-radius: 16px;
+      --transition-fast: 0.2s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      padding: 16px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      max-width: 480px;
+      width: 100%;
+      margin: auto;
+      border-radius: var(--border-radius);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+      padding: 20px 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    @media (min-width: 600px) {
+      .card {
+        padding: 28px 28px 20px;
+      }
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .app-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .step-indicator {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+
+    .progress-fill {
+      height: 6px;
+      width: 0%;
+      background: linear-gradient(90deg, #86e3ce, #4caf93);
+      border-radius: 999px;
+      transition: width var(--transition-fast);
+    }
+
+    .question-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .question-subtitle {
+      font-size: 14px;
+      color: var(--text-sub);
+    }
+
+    .content {
+      flex: 1;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .options-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .option-chip {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .option-chip span.icon {
+      font-size: 16px;
+    }
+
+    .option-chip.selected {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(76, 175, 147, 0.25);
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .text-input,
+    .select-input {
+      width: 100%;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      padding: 8px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+    }
+
+    .text-input:focus,
+    .select-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(76, 175, 147, 0.25);
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      transition: background var(--transition-fast), opacity var(--transition-fast),
+        transform var(--transition-fast), box-shadow var(--transition-fast);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 10px 20px rgba(76, 175, 147, 0.35);
+    }
+
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 10px rgba(76, 175, 147, 0.3);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.4;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-sub);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .summary-block {
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #374151;
+      line-height: 1.5;
+    }
+    .summary-block strong {
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e5f3ef;
+      font-size: 12px;
+      margin: 2px 4px 2px 0;
+      color: #047857;
+    }
+
+    .fade {
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="card">
+      <div class="header">
+        <div class="app-title">Healthy Daily</div>
+        <div class="step-indicator" id="stepIndicator"></div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <!-- 問卷內容區 -->
+      <div class="content" id="content"></div>
+
+      <!-- 底部按鈕 -->
+      <div class="footer">
+        <button class="btn btn-secondary" id="prevBtn">上一頁</button>
+        <button class="btn btn-primary" id="nextBtn">
+          下一步
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // 儲存使用者填寫結果的物件
+    const profile = {
+      dietRestrictions: [],
+      dietOthers: "",
+      cuisines: [],
+      dislikes: [],
+      dislikesOthers: "",
+      maxCookTime: null,
+      level: null,
+      healthGoals: [],
+      people: null,
+      appPurposes: [],
+    };
+
+    // 問卷步驟總數（不含歡迎頁算步驟的話可以微調）
+    const steps = [
+      { id: "welcome" },
+      { id: "diet" },
+      { id: "like_dislike" },
+      { id: "cook_habit" },
+      { id: "health_goal" },
+      { id: "people_usage" },
+      { id: "summary" },
+    ];
+
+    let currentStepIndex = 0;
+
+    const contentEl = document.getElementById("content");
+    const stepIndicatorEl = document.getElementById("stepIndicator");
+    const progressFillEl = document.getElementById("progressFill");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    // 工具：建立多選 chip
+    function createOptionChip(label, value, icon, multi, groupKey) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "option-chip";
+      chip.dataset.value = value;
+      chip.dataset.multi = multi ? "1" : "0";
+      chip.dataset.group = groupKey;
+
+      if (icon) {
+        const ic = document.createElement("span");
+        ic.className = "icon";
+        ic.textContent = icon;
+        chip.appendChild(ic);
+      }
+
+      const textNode = document.createElement("span");
+      textNode.textContent = label;
+      chip.appendChild(textNode);
+
+      chip.addEventListener("click", () => {
+        const isMulti = chip.dataset.multi === "1";
+
+        if (!isMulti) {
+          // 單選：同 group 其他都取消
+          const group = chip.dataset.group;
+          document
+            .querySelectorAll(`.option-chip[data-group="${group}"]`)
+            .forEach((c) => c.classList.remove("selected"));
+          chip.classList.add("selected");
+        } else {
+          chip.classList.toggle("selected");
+        }
+
+        syncCurrentStepToProfile();
+        updateNextButtonState();
+      });
+
+      return chip;
+    }
+
+    // UI：顯示目前步驟
+    function renderStep() {
+      contentEl.classList.remove("fade");
+      void contentEl.offsetWidth; // reset animation
+      contentEl.classList.add("fade");
+
+      const step = steps[currentStepIndex];
+
+      // 更新步驟文字 & 進度條（歡迎頁不算在 1/6 裡）
+      const totalRealSteps = steps.length - 2; // 除去 welcome & summary
+      let displayIndex = currentStepIndex;
+      if (step.id === "welcome") {
+        stepIndicatorEl.textContent = "歡迎使用 · 客製化你的健康餐";
+        progressFillEl.style.width = "0%";
+      } else if (step.id === "summary") {
+        stepIndicatorEl.textContent = "完成設定";
+        progressFillEl.style.width = "100%";
+      } else {
+        displayIndex = currentStepIndex; // diet=1,...people_usage=5
+        const num = displayIndex;
+        stepIndicatorEl.textContent = `問題 ${num} / ${totalRealSteps}`;
+        const percent = (num / totalRealSteps) * 100;
+        progressFillEl.style.width = `${percent}%`;
+      }
+
+      // 切換上下頁按鈕顯示
+      if (step.id === "welcome") {
+        prevBtn.style.visibility = "hidden";
+        nextBtn.textContent = "開始";
+      } else if (step.id === "summary") {
+        prevBtn.style.visibility = "visible";
+        nextBtn.textContent = "完成";
+      } else {
+        prevBtn.style.visibility = currentStepIndex === 0 ? "hidden" : "visible";
+        nextBtn.textContent = "下一步";
+      }
+
+      // 根據步驟渲染內容
+      switch (step.id) {
+        case "welcome":
+          renderWelcome();
+          break;
+        case "diet":
+          renderDiet();
+          break;
+        case "like_dislike":
+          renderLikeDislike();
+          break;
+        case "cook_habit":
+          renderCookHabit();
+          break;
+        case "health_goal":
+          renderHealthGoal();
+          break;
+        case "people_usage":
+          renderPeopleUsage();
+          break;
+        case "summary":
+          renderSummary();
+          break;
+      }
+
+      updateNextButtonState();
+    }
+    // 步驟內容：歡迎頁
+    function renderWelcome() {
+      contentEl.innerHTML = `
+        <div>
+          <div class="question-title">讓我了解你的飲食風格 ✨</div>
+          <div class="question-subtitle">
+            我會問幾個簡單的問題，為你搭配每天不一樣、又健康的每一餐。
+          </div>
+        </div>
+      `;
+    }
+
+    // 步驟內容：飲食限制
+    function renderDiet() {
+      contentEl.innerHTML = "";
+
+      const header = document.createElement("div");
+      header.innerHTML = `
+        <div class="question-title">你有什麼飲食限制嗎？</div>
+        <div class="question-subtitle">（可多選）</div>
+      `;
+      contentEl.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "options-grid";
+
+      const items = [
+        { label: "不吃牛", value: "no_beef", icon: "🐄" },
+        { label: "不吃豬", value: "no_pork", icon: "🐖" },
+        { label: "不吃羊", value: "no_lamb", icon: "🐑" },
+        { label: "不吃海鮮", value: "no_seafood", icon: "🍤" },
+        { label: "蛋奶素", value: "lacto_ovo", icon: "🍳" },
+        { label: "全素", value: "vegan", icon: "🥦" },
+      ];
+
+      items.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          it.icon,
+          true,
+          "dietRestrictions"
+        );
+        if (profile.dietRestrictions.includes(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid.appendChild(chip);
+      });
+
+      contentEl.appendChild(grid);
+
+      const otherWrapper = document.createElement("div");
+      otherWrapper.style.marginTop = "10px";
+      otherWrapper.innerHTML = `
+        <div class="section-title">其它特別不吃的？（選填）</div>
+        <input class="text-input" id="dietOthersInput"
+          placeholder="例如：內臟、牛奶、起司…" />
+        <div class="hint">這會幫助我更精準地避開你不喜歡的食材。</div>
+      `;
+      contentEl.appendChild(otherWrapper);
+
+      const dietOthersInput = otherWrapper.querySelector("#dietOthersInput");
+      dietOthersInput.value = profile.dietOthers || "";
+      dietOthersInput.addEventListener("input", () => {
+        profile.dietOthers = dietOthersInput.value.trim();
+      });
+    }
+
+    // 步驟內容：喜歡／不喜歡
+    function renderLikeDislike() {
+      contentEl.innerHTML = "";
+
+      const section1 = document.createElement("div");
+      section1.innerHTML = `
+        <div class="section-title">你喜歡什麼風格的料理？（可多選）</div>
+      `;
+      contentEl.appendChild(section1);
+
+      const grid1 = document.createElement("div");
+      grid1.className = "options-grid";
+      const cuisineItems = [
+        { label: "台式", value: "taiwanese" },
+        { label: "日式", value: "japanese" },
+        { label: "韓式", value: "korean" },
+        { label: "義式", value: "italian" },
+        { label: "簡單西式", value: "western" },
+        { label: "清爽輕食", value: "light_meal" },
+        { label: "湯／鍋物", value: "soup_hotpot" },
+      ];
+      cuisineItems.forEach((it) => {
+        const chip = createOptionChip(it.label, it.value, "", true, "cuisines");
+        if (profile.cuisines.includes(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid1.appendChild(chip);
+      });
+      contentEl.appendChild(grid1);
+
+      const section2 = document.createElement("div");
+      section2.style.marginTop = "16px";
+      section2.innerHTML = `
+        <div class="section-title">有什麼特別不喜歡的味道？（可多選）</div>
+      `;
+      contentEl.appendChild(section2);
+
+      const grid2 = document.createElement("div");
+      grid2.className = "options-grid";
+      const dislikeItems = [
+        { label: "香菜", value: "cilantro" },
+        { label: "洋蔥", value: "onion" },
+        { label: "青椒", value: "green_pepper" },
+        { label: "薑", value: "ginger" },
+        { label: "蒜頭", value: "garlic" },
+        { label: "茄子", value: "eggplant" },
+      ];
+      dislikeItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          "",
+          true,
+          "dislikes"
+        );
+        if (profile.dislikes.includes(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid2.appendChild(chip);
+      });
+      contentEl.appendChild(grid2);
+
+      const otherWrapper = document.createElement("div");
+      otherWrapper.style.marginTop = "10px";
+      otherWrapper.innerHTML = `
+        <div class="section-title">其它不喜歡的味道？（選填）</div>
+        <input class="text-input" id="dislikesOthersInput"
+          placeholder="例如：太辣、太甜、某種香料…" />
+      `;
+      contentEl.appendChild(otherWrapper);
+
+      const dislikesOthersInput = otherWrapper.querySelector(
+        "#dislikesOthersInput"
+      );
+      dislikesOthersInput.value = profile.dislikesOthers || "";
+      dislikesOthersInput.addEventListener("input", () => {
+        profile.dislikesOthers = dislikesOthersInput.value.trim();
+      });
+    }
+
+    // 步驟內容：烹飪習慣
+    function renderCookHabit() {
+      contentEl.innerHTML = "";
+
+      const q1 = document.createElement("div");
+      q1.innerHTML = `
+        <div class="question-title">你平常願意花多少時間煮飯？</div>
+        <div class="question-subtitle">（單選）</div>
+      `;
+      contentEl.appendChild(q1);
+
+      const grid1 = document.createElement("div");
+      grid1.className = "options-grid";
+
+      const timeItems = [
+        { label: "10 分鐘以內", value: "10" },
+        { label: "20 分鐘左右", value: "20" },
+        { label: "30 分鐘可以接受", value: "30" },
+        { label: "比較有空，做複雜的也可以", value: "60" },
+      ];
+
+      timeItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          "",
+          false,
+          "maxCookTime"
+        );
+        if (String(profile.maxCookTime) === String(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid1.appendChild(chip);
+      });
+      contentEl.appendChild(grid1);
+
+      const q2 = document.createElement("div");
+      q2.style.marginTop = "18px";
+      q2.innerHTML = `
+        <div class="question-title">你覺得自己的料理程度？</div>
+        <div class="question-subtitle">（單選）</div>
+      `;
+      contentEl.appendChild(q2);
+
+      const grid2 = document.createElement("div");
+      grid2.className = "options-grid";
+
+      const levelItems = [
+        { label: "新手（只會炒蛋、煮麵）", value: "beginner" },
+        { label: "入門（會炒青菜、煎肉）", value: "basic" },
+        { label: "熟練（看食譜都能做）", value: "intermediate" },
+        { label: "高手（可以挑戰比較細的料理）", value: "advanced" },
+      ];
+
+      levelItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          "",
+          false,
+          "level"
+        );
+        if (profile.level === it.value) {
+          chip.classList.add("selected");
+        }
+        grid2.appendChild(chip);
+      });
+      contentEl.appendChild(grid2);
+    }
+
+    // 步驟內容：健康目標
+    function renderHealthGoal() {
+      contentEl.innerHTML = "";
+
+      const header = document.createElement("div");
+      header.innerHTML = `
+        <div class="question-title">現在的你，最希望吃得怎麼樣？</div>
+        <div class="question-subtitle">（可多選）</div>
+      `;
+      contentEl.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "options-grid";
+
+      const goalItems = [
+        { label: "清爽一點", value: "light", icon: "🌿" },
+        { label: "多吃蛋白質", value: "more_protein", icon: "🥚" },
+        { label: "多吃蔬菜", value: "more_veggies", icon: "🥗" },
+        { label: "少澱粉", value: "less_carbs", icon: "🍚" },
+        { label: "維持體重", value: "maintain_weight", icon: "❤️" },
+        { label: "想增肌", value: "muscle_gain", icon: "🏋️‍♀️" },
+        { label: "想減脂", value: "fat_loss", icon: "🔥" },
+      ];
+
+      goalItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          it.icon,
+          true,
+          "healthGoals"
+        );
+        if (profile.healthGoals.includes(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid.appendChild(chip);
+      });
+      contentEl.appendChild(grid);
+    }
+
+    // 步驟內容：人數 & 使用目的
+    function renderPeopleUsage() {
+      contentEl.innerHTML = "";
+
+      const q1 = document.createElement("div");
+      q1.innerHTML = `
+        <div class="question-title">通常幾個人一起吃？</div>
+        <div class="question-subtitle">（單選）</div>
+      `;
+      contentEl.appendChild(q1);
+      const grid1 = document.createElement("div");
+      grid1.className = "options-grid";
+
+      const peopleItems = [
+        { label: "一個人", value: "1" },
+        { label: "兩個人", value: "2" },
+        { label: "三～四人", value: "3-4" },
+        { label: "更多（家人一起）", value: "5+" },
+      ];
+
+      peopleItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          "",
+          false,
+          "people"
+        );
+        if (profile.people === it.value) {
+          chip.classList.add("selected");
+        }
+        grid1.appendChild(chip);
+      });
+      contentEl.appendChild(grid1);
+
+      const q2 = document.createElement("div");
+      q2.style.marginTop = "18px";
+      q2.innerHTML = `
+        <div class="question-title">你希望這個服務主要幫你什麼？</div>
+        <div class="question-subtitle">（可多選）</div>
+      `;
+      contentEl.appendChild(q2);
+      const grid2 = document.createElement("div");
+      grid2.className = "options-grid";
+
+      const purposeItems = [
+        { label: "每天推薦不一樣的晚餐", value: "different_dinner" },
+        { label: "健康飲食規劃", value: "healthy_plan" },
+        { label: "用冰箱的食材找料理", value: "by_fridge" },
+        { label: "收藏我的菜單", value: "favorites" },
+        { label: "紀錄每天吃什麼", value: "meal_log" },
+      ];
+
+      purposeItems.forEach((it) => {
+        const chip = createOptionChip(
+          it.label,
+          it.value,
+          "",
+          true,
+          "appPurposes"
+        );
+        if (profile.appPurposes.includes(it.value)) {
+          chip.classList.add("selected");
+        }
+        grid2.appendChild(chip);
+      });
+      contentEl.appendChild(grid2);
+    }
+    // 步驟內容：總結
+    function renderSummary() {
+      contentEl.innerHTML = "";
+
+      const header = document.createElement("div");
+      header.innerHTML = `
+        <div class="question-title">已經大概了解你的飲食風格 💛</div>
+        <div class="question-subtitle">
+          接下來，我會根據這些設定，為你搭配每天不一樣、又健康的餐點。
+        </div>
+      `;
+      contentEl.appendChild(header);
+
+      const summary = document.createElement("div");
+      summary.className = "summary-block";
+
+      const cuisines = profile.cuisines.map(mapCuisineLabel).join("、") || "風格多元";
+      const goals =
+        profile.healthGoals.map(mapHealthGoalLabel).join("、") || "以好吃為主";
+      const people = mapPeopleLabel(profile.people);
+      const level = mapLevelLabel(profile.level);
+
+      summary.innerHTML = `
+        <div><strong>飲食風格：</strong>${cuisines}</div>
+        <div><strong>健康目標：</strong>${goals}</div>
+        <div><strong>通常用餐人數：</strong>${people}</div>
+        <div><strong>料理程度：</strong>${level}</div>
+      `;
+      contentEl.appendChild(summary);
+
+      const hint = document.createElement("div");
+      hint.className = "hint";
+      hint.textContent = "完成之後，你就可以開始抽取「今天要吃什麼」囉。";
+      contentEl.appendChild(hint);
+    }
+    // 將目前畫面選項回寫到 profile
+    function syncCurrentStepToProfile() {
+      const step = steps[currentStepIndex];
+
+      if (step.id === "diet") {
+        const selectedDiet = Array.from(
+          document.querySelectorAll(
+            '.option-chip[data-group="dietRestrictions"].selected'
+          )
+        ).map((c) => c.dataset.value);
+        profile.dietRestrictions = selectedDiet;
+      }
+
+      if (step.id === "like_dislike") {
+        const selectedCuisines = Array.from(
+          document.querySelectorAll('.option-chip[data-group="cuisines"].selected')
+        ).map((c) => c.dataset.value);
+        profile.cuisines = selectedCuisines;
+
+        const selectedDislikes = Array.from(
+          document.querySelectorAll('.option-chip[data-group="dislikes"].selected')
+        ).map((c) => c.dataset.value);
+        profile.dislikes = selectedDislikes;
+      }
+      if (step.id === "cook_habit") {
+        const maxCookTime = document.querySelector(
+          '.option-chip[data-group="maxCookTime"].selected'
+        );
+        profile.maxCookTime = maxCookTime ? maxCookTime.dataset.value : null;
+
+        const level = document.querySelector(
+          '.option-chip[data-group="level"].selected'
+        );
+        profile.level = level ? level.dataset.value : null;
+      }
+      if (step.id === "health_goal") {
+        const selectedGoals = Array.from(
+          document.querySelectorAll(
+            '.option-chip[data-group="healthGoals"].selected'
+          )
+        ).map((c) => c.dataset.value);
+        profile.healthGoals = selectedGoals;
+      }
+
+      if (step.id === "people_usage") {
+        const people = document.querySelector(
+          '.option-chip[data-group="people"].selected'
+        );
+        profile.people = people ? people.dataset.value : null;
+
+        const purposes = Array.from(
+          document.querySelectorAll(
+            '.option-chip[data-group="appPurposes"].selected'
+          )
+        ).map((c) => c.dataset.value);
+        profile.appPurposes = purposes;
+      }
+    }
+    // 判斷這一步是否必填、是否可下一步
+    function isStepValid() {
+      const step = steps[currentStepIndex];
+
+      if (step.id === "diet") {
+        // 飲食限制可以不選，永遠有效
+        return true;
+      }
+
+      if (step.id === "like_dislike") {
+        // 喜歡的料理風格，建議至少選一個
+        return profile.cuisines.length > 0;
+      }
+
+      if (step.id === "cook_habit") {
+        return profile.maxCookTime && profile.level;
+      }
+
+      if (step.id === "health_goal") {
+        // 至少一個健康目標
+        return profile.healthGoals.length > 0;
+      }
+
+      if (step.id === "people_usage") {
+        return !!profile.people;
+      }
+
+      // welcome & summary
+      return true;
+    }
+    function updateNextButtonState() {
+      const step = steps[currentStepIndex];
+
+      if (step.id === "welcome" || step.id === "summary") {
+        nextBtn.disabled = false;
+        return;
+      }
+
+      nextBtn.disabled = !isStepValid();
+    }
+
+    // label mapping functions
+    function mapCuisineLabel(v) {
+      switch (v) {
+        case "taiwanese":
+          return "台式";
+        case "japanese":
+          return "日式";
+        case "korean":
+          return "韓式";
+        case "italian":
+          return "義式";
+        case "western":
+          return "簡單西式";
+        case "light_meal":
+          return "清爽輕食";
+        case "soup_hotpot":
+          return "湯／鍋物";
+        default:
+          return v;
+      }
+    }
+    function mapHealthGoalLabel(v) {
+      switch (v) {
+        case "light":
+          return "清爽一點";
+        case "more_protein":
+          return "多吃蛋白質";
+        case "more_veggies":
+          return "多吃蔬菜";
+        case "less_carbs":
+          return "少澱粉";
+        case "maintain_weight":
+          return "維持體重";
+        case "muscle_gain":
+          return "想增肌";
+        case "fat_loss":
+          return "想減脂";
+        default:
+          return v;
+      }
+    }
+    function mapPeopleLabel(v) {
+      switch (v) {
+        case "1":
+          return "一個人";
+        case "2":
+          return "兩個人";
+        case "3-4":
+          return "三～四人";
+        case "5+":
+          return "家人一起";
+        default:
+          return "尚未設定";
+      }
+    }
+
+    function mapLevelLabel(v) {
+      switch (v) {
+        case "beginner":
+          return "新手";
+        case "basic":
+          return "入門";
+        case "intermediate":
+          return "熟練";
+        case "advanced":
+          return "高手";
+        default:
+          return "尚未設定";
+      }
+    }
+    // 事件綁定：上一頁 / 下一步
+    prevBtn.addEventListener("click", () => {
+      if (currentStepIndex > 0) {
+        currentStepIndex--;
+        renderStep();
+      }
+    });
+    nextBtn.addEventListener("click", () => {
+      const step = steps[currentStepIndex];
+
+      if (step.id !== "welcome" && step.id !== "summary") {
+        syncCurrentStepToProfile();
+      }
+
+      if (step.id === "summary") {
+        // ✅ 仍然可以先存 localStorage（保留，之後可拿掉）
+        localStorage.setItem("mealProfile", JSON.stringify(profile));
+
+        console.log("📤 問卷送出中：", profile);
+
+        // ✅ 送到後端存 MySQL
+        fetch("/submit-survey", {
+          method: "POST",
+          headers: {
+          "Content-Type": "application/json"
+          },
+          body: JSON.stringify(profile)
+        })
+          .then(res => res.json())
+          .then(result => {
+          if (result.success) {
+              console.log("✅ 問卷已存入 MySQL");
+
+              // ✅ 成功後再跳轉推薦頁
+              window.location.href = "/index_18.html";
+            } else {
+             alert("問卷儲存失敗，請再試一次");
+            }
+          })
+          .catch(err => {
+            console.error("❌ 問卷送出錯誤：", err);
+            alert("連線失敗，請稍後再試");
+          });
+
+        return;
+      }
+
+      if (!isStepValid()) return;
+
+      if (currentStepIndex < steps.length - 1) {
+        currentStepIndex++;
+        renderStep();
+      }
+    });
+
+    // 初始化
+    renderStep();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+ 
